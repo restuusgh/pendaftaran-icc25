@@ -154,14 +154,14 @@ const AdminPage = ({ isAdmin, data, handleDelete, handleEdit }) => {
       
        {/* pagination */}
 
-        <div className="mt-6 flex justify-end">
-  <div className="backdrop-blur-md bg-white/10 rounded-md px-6 py-3 shadow-md">
-    <Stack spacing={1}>
-      <Pagination
-        count={10}
-        variant="outlined"
-        shape="rounded"
-        sx={{
+      <div className="mt-6 flex justify-end">
+      <div className="backdrop-blur-md bg-white/10 rounded-md px-6 py-3 shadow-md">
+      <Stack spacing={1}>
+        <Pagination
+          count={10}
+          variant="outlined"
+          shape="rounded"
+          sx={{
           '& .MuiPaginationItem-root': {
             color: '#fff',
             borderColor: 'rgba(255,255,255,0.3)',
