@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
-import { FaUser, FaIdCard, FaEnvelope, FaPhone, FaUniversity, FaUpload } from 'react-icons/fa';
+import { FaUser, FaIdCard, FaEnvelope, FaPhone } from 'react-icons/fa';
+import supabase from '../supabaseClient.js';
 
 const Register = ({ mahasiswaList, setMahasiswaList }) => {
   const [formData, setFormData] = useState({
@@ -10,178 +11,155 @@ const Register = ({ mahasiswaList, setMahasiswaList }) => {
     email: '',
     phone: '',
     angkatan: '',
-    file: null,
-    fileName: '',
-    filePreview: '',
   });
 
+  const [nimError, setNimError] = useState('');
+  const [namaError, setNamaError] = useState('');
+  const [emailError, setEmailError] = useState('');
+
+  const forbiddenWords = ['anjing', 'babi', 'goblok', 'tolol', 'bangsat', 'kontol', 'asu'];
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'nim') {
+      setNimError(value && !value.startsWith('41037006') ? 'NIM harus diawali dengan 41037006' : '');
+    }
+
+    if (name === 'nama') {
+      const found = forbiddenWords.find(word => value.toLowerCase().includes(word));
+      setNamaError(found ? `Kata "${found}" tidak diperbolehkan!` : '');
+    }
+
+    if (name === 'email') {
+      const found = forbiddenWords.find(word => value.toLowerCase().includes(word));
+      setEmailError(found ? `Kata "${found}" tidak diperbolehkan di email!` : '');
+    }
+
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    const preview = file ? URL.createObjectURL(file) : '';
-
-    setFormData({
-      ...formData,
-      file,
-      fileName: file?.name,
-      filePreview: preview,
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const newData = {
-      ...formData,
-      id: Date.now(),
-    };
+    if (nimError || namaError || emailError) {
+      toast.error('Data tidak valid, periksa kembali!');
+      return;
+    }
 
-    setMahasiswaList([...mahasiswaList, newData]);
+    try {
+      const { error } = await supabase.from('PesertaIccList').insert([{
+        nama: formData.nama,
+        nim: formData.nim,
+        email: formData.email,
+        phone: formData.phone,
+        angkatan: formData.angkatan,
+      }]);
 
-    setFormData({
-      nama: '',
-      nim: '',
-      email: '',
-      phone: '',
-      angkatan: '',
-      file: null,
-      fileName: '',
-      filePreview: '',
-    });
+      if (error) {
+        toast.error('Gagal menyimpan data ke database.');
+        console.error('Supabase error:', error);
+        return;
+      }
 
-    toast.success('Pendaftaran Berhasil!', {
-      duration: 5000,
-      className: 'bg-green-600 text-white px-4 py-2 rounded shadow-lg animate__animated animate__fadeInDown',
-    });
+      const newData = {
+        ...formData,
+        id: Date.now(),
+      };
+
+      setMahasiswaList([...mahasiswaList, newData]);
+
+      toast.success('Pendaftaran Berhasil!');
+
+      setFormData({
+        nama: '',
+        nim: '',
+        email: '',
+        phone: '',
+        angkatan: '',
+      });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast.error('Terjadi kesalahan sistem.');
+    }
   };
 
   return (
-    <div className='min-h-screen w-screen flex justify-center items-center bg-gray-900 px-4'>
-      <div className='w-full max-w-md mx-auto bg-slate-800 border border-slate-600 rounded-md p-6 sm:p-8 shadow-lg backdrop-blur-lg bg-opacity-30'>
-        <Toaster position="top-center" reverseOrder={false} />
-        <h1 className='text-2xl sm:text-3xl md:text-4xl font-bold text-center text-white mb-6'>Daftar ICC Season IV</h1>
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat px-4 py-8 flex items-center justify-center"
+      style={{ backgroundImage: 'url(/bg.jpg)' }}
+    >
+      <div className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-slate-800 bg-opacity-50 backdrop-blur-lg border border-slate-500 rounded-xl p-6 shadow-2xl">
+        <Toaster position="top-center" />
+        <h1 className="text-3xl font-bold text-white text-center mb-6">Daftar ICC Season IV</h1>
 
         <form onSubmit={handleSubmit}>
-          {[{
-            name: 'nama',
-            label: 'Nama Mahasiswa',
-            icon: <FaUser className='absolute right-2 top-3 text-gray-400 peer-focus:text-blue-500' />,
-            type: 'text'
-          }, {
-            name: 'nim',
-            label: 'Masukkan NIM',
-            icon: <FaIdCard className='absolute right-2 top-3 text-gray-400 peer-focus:text-blue-500' />,
-            type: 'text'
-          }, {
-            name: 'email',
-            label: 'Masukkan Email',
-            icon: <FaEnvelope className='absolute right-2 top-3 text-gray-400 peer-focus:text-blue-500' />,
-            type: 'email'
-          }, {
-            name: 'phone',
-            label: 'Masukkan No HP',
-            icon: <FaPhone className='absolute right-2 top-3 text-gray-400 peer-focus:text-blue-500' />,
-            type: 'tel'
-          }].map(({ name, label, icon, type }) => (
-            <div className='relative my-4' key={name}>
+          {[
+            { name: 'nama', label: 'Nama Mahasiswa', icon: <FaUser />, type: 'text' },
+            { name: 'nim', label: 'Masukkan NIM', icon: <FaIdCard />, type: 'text' },
+            { name: 'email', label: 'Masukkan Email', icon: <FaEnvelope />, type: 'email' },
+            { name: 'phone', label: 'Masukkan No HP', icon: <FaPhone />, type: 'tel' }
+          ].map(({ name, label, icon, type }) => (
+            <div className="relative mb-6" key={name}>
+              <div className="absolute left-2 top-3 text-gray-400">
+                {icon}
+              </div>
               <input
                 type={type}
                 name={name}
                 value={formData[name]}
                 onChange={handleChange}
-                className='peer block w-full py-2.5 px-0 text-sm text-white bg-transparent border-0 border-b-2 border-gray-300 appearance-none focus:border-blue-500 focus:outline-none focus:ring-0'
-                placeholder=" "
+                className="peer w-full py-2 pt-5 pl-10 pr-3 text-white bg-transparent border-b-2 border-gray-500 placeholder-transparent focus:outline-none focus:border-blue-500"
+                placeholder={label}
                 required
-                pattern={name === 'phone' ? '^(+62|62|0)[0-9]{9,13}$' : undefined}
-                title={name === 'phone' ? 'Format: 08xxxxxxxxxx, 62xxxxxxxxxx, atau +62xxxxxxxxxx' : undefined}
               />
               <label
-                className='absolute text-sm text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 left-0 origin-[0] peer-focus:text-blue-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6'>
+                htmlFor={name}
+                className="absolute left-10 top-2 text-sm text-gray-400 transition-all duration-200
+                  peer-placeholder-shown:top-3.5
+                  peer-placeholder-shown:text-base
+                  peer-placeholder-shown:text-gray-500
+                  peer-focus:top-2
+                  peer-focus:text-sm
+                  peer-focus:text-blue-400"
+              >
                 {label}
               </label>
-              {icon}
+              {name === 'nim' && nimError && <p className="text-red-500 text-sm mt-1">{nimError}</p>}
+              {name === 'nama' && namaError && <p className="text-red-500 text-sm mt-1">{namaError}</p>}
+              {name === 'email' && emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
             </div>
           ))}
 
-          <div className='my-4'>
-            <label htmlFor="angkatan" className='text-white block mb-1 flex items-center gap-2'>
-              <FaUniversity /> Angkatan
-            </label>
+          <div className="mb-4">
+            <label className="text-white block mb-1">Angkatan</label>
             <select
               name="angkatan"
               value={formData.angkatan}
               onChange={handleChange}
-              className='w-full p-2 rounded bg-slate-700 text-white border border-gray-500 focus:border-blue-500 focus:ring-blue-500 focus:outline-none'
+              className="w-full p-2 rounded bg-slate-700 bg-opacity-60 text-white border border-gray-500 focus:border-blue-500"
               required
             >
               <option value="">Pilih Angkatan</option>
-              <option value="2021">2021</option>
-              <option value="2022">2022</option>
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
+              {[2021, 2022, 2023, 2024].map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
             </select>
           </div>
 
-          <div className="my-4 border border-gray-600 rounded-lg p-4">
-            <label htmlFor="bukti" className="block mb-2 text-white font-medium flex items-center gap-2">
-              <FaUpload /> Bukti Pembayaran
-            </label>
+          <button
+            type="submit"
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded mt-4 transition-colors"
+          >
+            Daftar Sekarang
+          </button>
 
-            <label className="inline-flex items-center cursor-pointer">
-              <span className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition duration-200 mr-2">
-                Pilih File
-                <input
-                  id="bukti"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  required
-                />
-              </span>
-            </label>
-
-            <div className="mt-3">
-              {formData.filePreview && (
-                formData.file.type.startsWith("image/") ? (
-                  <img
-                    src={formData.filePreview}
-                    alt="Preview Bukti"
-                    className="w-full max-h-64 object-contain border border-gray-500 rounded mt-2"
-                  />
-                ) : (
-                  <p className="text-gray-300">📄 File PDF terpilih: {formData.fileName}</p>
-                )
-              )}
-              {!formData.file && (
-                <p className="text-sm text-gray-400 mt-2">Belum ada file dipilih</p>
-              )}
-            </div>
-
-            <p className="mt-2 text-xs text-gray-400">
-              Format yang diterima: JPG, PNG, PDF (maks. 5MB)
-            </p>
-          </div>
-
-          <div className='mt-6'>
-            <button
-              type="submit"
-              className='w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 shadow-md hover:shadow-lg'
-            >
-              Daftar Sekarang
-            </button>
-          </div>
-
-          <div className='mt-4 text-center'>
-            <Link
-              to="/DataMahasiswa"
-              className='text-white hover:text-blue-300 text-sm transition duration-200'>
-              Lihat mahasiswa terdaftar? Lihat disini
+          <p className="text-center text-gray-200 mt-4">
+            Sudah daftar?{' '}
+            <Link to="/list" className="text-blue-400 hover:underline">
+              Lihat Daftar Peserta
             </Link>
-          </div>
+          </p>
         </form>
       </div>
     </div>
