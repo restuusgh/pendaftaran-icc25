@@ -17,7 +17,7 @@ const Register = ({ mahasiswaList, setMahasiswaList }) => {
   const [namaError, setNamaError] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  const forbiddenWords = ['anjing', 'babi', 'goblok', 'tolol', 'bangsat', 'kontol', 'asu'];
+  const forbiddenWords = ['anjing', 'babi', 'goblok', 'tolol', 'bangsat', 'kontol', 'asu', 'ngewe', 'memek', 'ngetod', 'puki', 'pantat', 'susu', 'selangkang'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
